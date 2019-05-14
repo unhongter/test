@@ -1,0 +1,238 @@
+<div class="row">
+	<div class="col-xs-12">
+		<div class="box">
+			<div class="box-header">
+				<h3 class="box-title">日志管理</h3>
+
+				<div class="box-tools">
+					<div class="input-group input-group-sm" style="width: 350px;">
+						<input type="text" name="table_search" id="searchNameId"
+							class="form-control pull-right" placeholder="用户名">
+
+						<div class="input-group-btn">
+							<button type="button"  class="btn btn-default btn-search">
+                                <i class="fa fa-search"></i>
+							</button>
+							<button type="button" class="btn btn-default btn-delete">删除</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /.box-header -->
+			<div class="box-body table-responsive no-padding">
+				<table class="table table-hover">
+					<thead>
+						<tr>
+						    <th><input type="checkbox" id="checkAll">全选</th>
+							<th>用户名</th>
+							<th>操作</th>
+							<th>请求方法</th>
+							<th>请求参数</th>
+							<th>IP地址</th>
+							<th>执行时间</th>
+						</tr>
+					</thead>
+					<tbody id="tbodyId">
+					    <tr>
+					       <td colspan="7">数据加载中...</td>
+					    </tr>
+					</tbody>
+				</table>
+			</div>
+			<div id="pageId" class="box-footer clearfix">
+			      
+			</div>
+			<!-- /.box-body -->
+		</div>
+		<!-- /.box -->
+	</div>
+</div>
+
+<script type="text/javascript">
+   $(function(){
+	 
+	 //页面加载完成，异步加载分页div
+     $("#pageId").load("doPageUI.do",function(){
+	     doGetObjects();
+     });
+	 
+	 //按钮事件注册
+	 $(".input-group-btn")
+	 .on("click",".btn-search",doQueryObjects)
+	 .on("click",".btn-delete",doDeleteObjects)
+	 
+	 //全选按钮事件注册
+	 $("#checkAll").click(doChangeTBodyCheckBoxState);
+	 //tbody中checkbox对象事件注册
+	 $("#tbodyId").on("click",".cBox",doChangeTHeadCheckBoxState)
+   
+   })
+   //修改thead中checkbox对象的状态
+   function doChangeTHeadCheckBoxState(){
+	  // debugger
+	   //1.定义一个变量，给定初始化值true
+	   var flag=true;
+	   //2.获取tbody中checkbox对象状态并与flag进行逻辑与操作。
+	   $("#tbodyId input[type='checkbox']")
+	   .each(function(){
+		   flag=flag&&$(this).prop("checked");
+	   })
+	   //3.修改thead中checkbox值
+	   $("#checkAll").prop("checked",flag);
+   }
+   
+   //修改tbody中checkbox对象状态
+   function doChangeTBodyCheckBoxState(){
+	   //1.获取全选checkbox对象状态
+	   var state=$(this).prop("checked");
+	   //2.修改tbody中checkbox对象状态
+	   $("#tbodyId input[type='checkbox']")
+	   .each(function(){
+		   $(this).prop("checked",state);
+	   })
+   }
+   
+   function doGetCheckedIds(){
+	   //1.定义个数组
+	   var array=[];//new Array();
+	   //2.迭代所有tbody中checkbox
+	   $("#tbodyId input[type='checkbox']")
+	   .each(function(){//发现元素则执行函数
+		   //判定元素是否选中(选中时checked属性值为true)
+		   if($(this).prop("checked")){
+			  //并将选中对象的value存储到数组
+			  array.push($(this).val())
+		  } 
+	   })
+	   //3.返回数组
+	   return array;
+   }
+   //执行删除操作
+   function doDeleteObjects(){
+	  debugger
+	  //1.获取选中的记录id并判定
+	  var idArray=doGetCheckedIds();
+	  if(!idArray||idArray.length==0){
+		  alert("请先选择");
+		  return;
+	  }
+	  //2.给出提示信息是否确认删除
+	  if(!confirm("确认删除？"))return;
+	  //3.执行删除操作
+	  //3.1 定义请求的参数
+	  var params={"idArray":idArray.toString()};
+	  console.log("params.ids",params);
+	  //3.2 定义请求url
+	  var url="log/doDeleteObjects.do";
+	  //3.3 发送异步请求执行删除
+	  $.post(url,params,function(result){
+		  if(result.state==1){
+			  alert(result.message);
+			  //假如是最后一页并且全选了，可修改一下页码
+			  doSetPageCurrent();
+			  doGetObjects();
+		  }else{
+			  alert(result.message);
+		  }
+	  })
+   }
+   
+  function doSetPageCurrent(){
+  	 var pageCount=$("#pageId").data("pageCount");
+  	 var pageCurrent=$("#pageId").data("pageCurrent");
+  	 var checked=$("#checkAll").prop("checked");
+  	 if(pageCurrent==pageCount&&checked&&pageCurrent>1){
+  		 pageCurrent--;
+  		 $("#pageId").data("pageCurrent",pageCurrent);
+  	 }
+  }
+
+   //基于用户名查询数据
+   function doQueryObjects(){
+	   //1.初始化当前页码值
+	   $("#pageId").data("pageCurrent",1);
+	   //2.执行查询操作
+	   doGetObjects();
+   }
+   //依据条件查询数据
+   function doGetObjects(){
+	   $("#checkAll").prop("checked",false);
+	   //debugger //控制台窗口打开时才有意义
+	   //1.定义请求参数
+	   var pageCurrent=$("#pageId").data("pageCurrent");
+	   if(!pageCurrent)pageCurrent=1;
+	   var params={"pageCurrent":pageCurrent};//json格式的js对象
+	   //当查询时获取用户输入的用户并添加到参数对象中
+	   var username=$("#searchNameId").val();
+	   if(username)params.username=username;
+	   //2.定义请求的url
+	   var url="log/doFindPageObjects.do";
+	   //3.发送异步请求
+	   //get函数为jquery内部的一个异步请求函数
+	   //getJSON函数为jquery内部的一个异步请求函数
+	   $.getJSON(url,params,function(result){//响应结束执行此函数
+		   //处理服务端的响应结果
+	       doHandleResponseResult(result);
+	   });//getJSON是一个特殊get函数
+   }
+   //处理查询结果
+   function doHandleResponseResult(result){//JsonResult
+	  // debugger
+	   if(result.state==1){//stata
+		   //1.呈现当前页的记录信息
+		   console.log("result.data",result.data);
+		   doSetTableBodyRows(result.data.records);
+		   //2.呈现当前页的分页页码信息
+		   doSetPagination(result.data);//PageObject
+	   }else{
+		   //给出相关提示
+		   alert(result.message);
+	   }
+   }
+   //在table的tbody位置呈现数据
+   function doSetTableBodyRows(records){
+	  console.log("records",records);
+	  //1.获取tbody对象并清空原有内容
+	  var tBody=$("#tbodyId");
+	  tBody.empty();//清空tbody中内容
+	  //2.迭代记录并将其内容添加到tbody中
+	  for(var i=0;i<records.length;i++){
+		 //2.1构建tr对象
+		 var tr=$("<tr></tr>");
+		 //2.2构建多个td对象
+		 var tds=doCreateTds(records[i]);
+		 //2.3将td追加到tr中
+		 tr.append(tds);
+		 //2.4将tr追加到tbody中
+		 tBody.append(tr);
+	  }
+   }
+   //创建一行中的多个td
+   function doCreateTds(data){
+	   console.log("data",data);
+	   var tds="<td><input type='checkbox' class='cBox' name='cItem' value='"+data.id+"'></td>"+
+		   	 "<td>"+data.username+"</td>"+
+		     "<td>"+data.operation+"</td>"+
+		     "<td>"+data.method+"</td>"+
+		     "<td>"+data.params+"</td>"+
+		     "<td>"+data.ip+"</td>"+
+		     "<td>"+data.time+"</td>";	   
+      return tds;
+   }
+
+   
+   
+   
+   
+</script>
+
+
+
+
+
+
+
+
+
+
+

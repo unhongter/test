@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.db.sys.dao.SysRoleDao">
+    <!-- 当前命名空间使用二级缓存(参考官网映射文件配置)-->
+    <cache
+       eviction="lru"
+       readOnly="false"
+       flushInterval="60000"
+       size="512"/>
+    <select id="getRowCountByName"
+            resultType="int">
+         select count(*)
+         from sys_roles
+         where name=#{name}
+    </select>
+    <!-- 查询所有角色信息 -->
+    <select id="findObjects"
+            resultType="com.db.common.vo.CheckBox">
+         select id,name
+         from sys_roles        
+    </select>
+    
+    <update id="updateObject">
+       update sys_roles
+       set name=#{name},
+           note=#{note},
+           modifiedTime=now(),
+           modifiedUser=#{modifiedUser}
+       where id=#{id}
+    </update>
+    
+    <!-- 自定义结果映射 -->
+    <resultMap type="com.db.sys.vo.SysRoleMenuVo"
+               id="sysRoleMenuVo">
+           <!--  one2many 基于角色id查询菜单id，并将其值
+                                 存储到SysRoleMenuVo对象的menuIds属性上 -->
+           <collection property="menuIds"
+                       column="id"
+                       select="com.db.sys.dao.SysRoleMenuDao.findMenuIdsByRoleId">
+           </collection> 
+    </resultMap>
+    <!-- 基于id查询角色信息 -->  
+    <select id="findObjectById"
+            resultMap="sysRoleMenuVo">
+          select id,name,note
+          from sys_roles
+          where id=#{id}
+    </select>   
+    <!-- 
+     1)useGeneratedKeys="true" 表示使用自动生成的主键值
+     2)keyProperty="id" 表示将主键值赋值给参数对象的id属性
+     -->
+    <insert id="insertObject"
+            parameterType="com.db.sys.entity.SysRole"
+            useGeneratedKeys="true"
+            keyProperty="id">
+         insert into sys_roles 
+         (id,name,note,createdTime,modifiedTime,
+         createdUser,modifiedUser) 
+         values
+         (null,#{name},#{note},now(),now(),
+         #{createdUser},#{modifiedUser})
+    </insert>
+    <!-- 基于角色id删除角色自身信息 -->   
+    <delete id="deleteObject">
+        delete from sys_roles
+        where id=#{id}
+    </delete>
+       
+    <!-- 通过sql标签提取共性 -->
+    <sql id="queryWhereId">
+      from sys_roles
+      <where>
+         <if test="name!=null and name!=''">
+             name like concat("%",#{name},"%")
+         </if>
+      </where>
+    </sql>
+    <!-- 按条件统计总记录数 -->
+    <select id="getRowCount"
+            resultType="int">
+         select count(*)
+         <!-- 通过include标签引入通过sql标签定义的id -->
+         <include refid="queryWhereId"/>
+    </select>
+    <!-- 查询当前页记录 -->
+    <select id="findPageObjects"
+            resultType="com.db.sys.entity.SysRole">
+         select *
+         <include refid="queryWhereId"/>
+         order by createdTime desc
+         limit #{startIndex},#{pageSize}  
+    </select>
+    
+</mapper>
